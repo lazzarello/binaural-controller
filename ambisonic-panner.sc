@@ -79,7 +79,7 @@ a = EncDeltadef(\anglePan, {|ring, delta|
 			~ring_values[ring] = ~ring_values[ring] + delta;
 		};
 	};
-	scaled_value = ~ring_values[ring].linlin(min, max, pi/2, -pi/2);
+	scaled_value = ~ring_values[ring].linlin(min, max, -pi/2, pi/2);
 	"encoder number (%): angle (%)".format(ring, scaled_value).postln;
 	x.set(\angle, scaled_value);
 }, 0);
