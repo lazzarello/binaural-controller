@@ -7,7 +7,16 @@ pyo_target = pyliblo3.Address(9002)
 class OSCForwarder(monome.ArcApp):
     def __init__(self):
         super().__init__()
-        self.pos = [0, 0, 0, 0] # our four encoders, left to right
+
+    def update(self, delta):
+        self.accumulated_value += delta
+        return self.scale_value(self.accumulated_value)
+
+    def scale_value(self, value):
+        if self.in_min == self.in_max:
+            raise ValueError("Input range cannot be zero")
+        scaled_value = (value - self.in_min) * (self.out_max - self.out_min) / (self.in_max - self.in_min) + self.out_min
+        return scaled_value
 
     def on_arc_ready(self):
         print("Ready, clearing all rings")
@@ -18,11 +27,12 @@ class OSCForwarder(monome.ArcApp):
         print('Arc disconnected')
 
     def on_arc_delta(self, ring, delta):
-        old_position = self.pos[ring]
-        new_position = old_position + delta
-        self.pos[ring] = new_position
-        pyliblo3.send(pyo_target, "/arc/enc", int(ring + 1), self.pos[ring])
-        print(f"Old Position: {old_position}, New Position: {new_position}")
+        if ring == 0:
+            pyliblo3.send(pyo_target, "/pyo/sine/freq", delta)
+        if ring == 1:
+            pyliblo3.send(pyo_target, "/pyo/azi/degree", delta)
+        if ring == 2:
+            pyliblo3.send(pyo_target, "/pyo/ele/degree", delta)
 
 async def main():
     loop = asyncio.get_running_loop()
