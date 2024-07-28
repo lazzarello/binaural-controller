@@ -18,17 +18,40 @@ SerialOSCClient.init;
 )
 
 // Neat GUI for all the transform methods
-~display = FoaXformDisplay();
+// ~display = FoaXformDisplay();
 ~encoder = FoaEncoderMatrix.newOmni;
 ~decoder = FoaDecoderKernel.newUHJ;                         // UHJ (kernel)
-// ~transformer = 'zoomX';
 ~transformer = 'push';
-~renderDecode = { arg in, decoder;
-    var kind;
-    kind = decoder.kind;
-    FoaDecode.ar(in, decoder);
-}
 
+(
+MIDIClient.init;
+MIDIIn.connectAll;
+MIDIClient.sources;
+
+// Polyphonic synthesizer
+~bend = 8192;
+~notes = Array.newClear(128);
+MIDIdef.noteOn(\noteOnTest, {|vel,nn,chan,src|
+	[vel,nn].postln;
+	~notes[nn] = Synth.new(\tone, [
+		\freq, nn.midicps,
+		\amp, vel.linexp(1,127,0.01,0.3),
+		\gate,1,
+		\bend, ~bend.linlin(0,16383, -2, 2)
+	]);
+});
+
+MIDIdef.noteOff(\noteOffTest, {|vel,nn|
+	[vel,nn].postln;
+	~notes[nn].set(\gate, 0);
+	~notes[nn] = nil;
+});
+
+MIDIdef.bend(\bendTest, {|val, chan, src|
+	[val,chan,src].postln;
+	~bend = val;
+	~notes.do{|synth| synth.set(\bend, val.linlin(0,16383, -2, 2))};
+}, chan:0);
 SynthDef.new(\micInput, { |out = 0,
 	                       angle= 0,
 	                       azimuth = 0,
@@ -45,17 +68,28 @@ SynthDef.new(\micInput, { |out = 0,
 		)
 	);
 }).add;
-x = Synth(\micInput, [\angle, 0,
-	                  \azimuth, 0,
-	                  \distance, 1,
-	                  \elevation, 0]
-)
-x.free;
 
-(
+SynthDef.new(\tone, {|freq=440, amp=0.3, gate=0, bend=0|
+	var sig, env;
+	// sig = LFTri.ar(freq * bend.midiratio)!2;
+	sig = LFTri.ar(freq * bend.midiratio);
+	env = EnvGen.kr(Env.adsr, gate, doneAction:2);
+	sig = sig * env * amp;
+	Out.ar(0,
+		FoaDecode.ar(
+			FoaTransform.ar(
+				FoaEncode.ar(
+					sig,
+					~encoder
+				), ~transformer, -1.4, 2.3, -0.26
+			),~decoder
+		)
+	);
+}).add;
+
 ~ring_values = [0,0,0,0];
 // Define callback function for encoder events
-a = EncDeltadef(\anglePan, {|ring, delta|
+EncDeltadef(\anglePan, {|ring, delta|
 	var min = -512;
 	var max = 512;
 	var scaled_value;
@@ -63,27 +97,22 @@ a = EncDeltadef(\anglePan, {|ring, delta|
 	// going down
 	{delta < 0} {
 		var current_value = ~ring_values[ring];
-		if (current_value + delta < min) {
-			~ring_values[ring] = min;
-		} {
-			~ring_values[ring] = ~ring_values[ring] + delta;
-		};
+		if (current_value + delta < min)
+		{~ring_values[ring] = min}
+		{~ring_values[ring] = current_value + delta};
 	}
 	// going up
 	{delta > 0} {
-
 		var current_value = ~ring_values[ring];
-		if (current_value + delta > max) {
-			~ring_values[ring] = max;
-		} {
-			~ring_values[ring] = ~ring_values[ring] + delta;
-		};
+		if (current_value + delta > max)
+		{~ring_values[ring] = max}
+		{~ring_values[ring] = current_value + delta};
 	};
 	scaled_value = ~ring_values[ring].linlin(min, max, -pi/2, pi/2);
 	"encoder number (%): angle (%)".format(ring, scaled_value).postln;
 	x.set(\angle, scaled_value);
 }, 0);
-b = EncDeltadef(\aziPan, {|ring, delta|
+EncDeltadef(\aziPan, {|ring, delta|
 	var min = -512;
 	var max = 512;
 	var scaled_value;
@@ -91,27 +120,22 @@ b = EncDeltadef(\aziPan, {|ring, delta|
 	// going down
 	{delta < 0} {
 		var current_value = ~ring_values[ring];
-		if (current_value + delta < min) {
-			~ring_values[ring] = min;
-		} {
-			~ring_values[ring] = ~ring_values[ring] + delta;
-		};
+		if (current_value + delta < min)
+		{~ring_values[ring] = min}
+		{~ring_values[ring] = current_value + delta};
 	}
 	// going up
 	{delta > 0} {
-
 		var current_value = ~ring_values[ring];
-		if (current_value + delta > max) {
-			~ring_values[ring] = max;
-		} {
-			~ring_values[ring] = ~ring_values[ring] + delta;
-		};
+		if (current_value + delta > max)
+		{~ring_values[ring] = max}
+		{~ring_values[ring] = current_value + delta};
 	};
 	scaled_value = ~ring_values[ring].linlin(min, max, pi, -pi);
 	"encoder number (%): azimuth (%)".format(ring, scaled_value).postln;
 	x.set(\azimuth, scaled_value);
 }, 1);
-c = EncDeltadef(\elevationPan, {|ring, delta|
+EncDeltadef(\elevationPan, {|ring, delta|
 	var min = -512;
 	var max = 512;
 	var scaled_value;
@@ -119,24 +143,22 @@ c = EncDeltadef(\elevationPan, {|ring, delta|
 	// going down
 	{delta < 0} {
 		var current_value = ~ring_values[ring];
-		if (current_value + delta < min) {
-			~ring_values[ring] = min;
-		} {
-			~ring_values[ring] = ~ring_values[ring] + delta;
-		};
+		if (current_value + delta < min)
+		{~ring_values[ring] = min}
+		{~ring_values[ring] = current_value + delta};
 	}
 	// going up
 	{delta > 0} {
 		var current_value = ~ring_values[ring];
 		if (current_value + delta > max)
 		{~ring_values[ring] = max}
-		{~ring_values[ring] = ~ring_values[ring] + delta };
+		{~ring_values[ring] = current_value + delta };
 	};
 	scaled_value = ~ring_values[ring].linlin(min, max, pi, -pi);
 	"encoder number (%): elevation (%)".format(ring, scaled_value).postln;
 	x.set(\elevation, scaled_value);
 }, 2);
-d = EncDeltadef(\distancePan, {|ring, delta|
+EncDeltadef(\distancePan, {|ring, delta|
 	var min = -512;
 	var max = 512;
 	var scaled_value;
@@ -144,30 +166,26 @@ d = EncDeltadef(\distancePan, {|ring, delta|
 	// going down
 	{delta < 0} {
 		var current_value = ~ring_values[ring];
-		if (current_value + delta < min) {
-			~ring_values[ring] = min;
-		} {
-			~ring_values[ring] = ~ring_values[ring] + delta;
-		};
+		if (current_value + delta < min)
+		{~ring_values[ring] = min}
+		{~ring_values[ring] = current_value + delta};
 	}
 	// going up
 	{delta > 0} {
 		var current_value = ~ring_values[ring];
 		if (current_value + delta > max)
 		{~ring_values[ring] = max}
-		{~ring_values[ring] = ~ring_values[ring] + delta };
+		{~ring_values[ring] = current_value + delta };
 	};
 	scaled_value = ~ring_values[ring].lincurve(min, max, 0, 1);
 	"encoder number (%): distance (%)".format(ring, scaled_value).postln;
 	x.set(\distance, scaled_value);
 }, 3);
 )
-// Some other options for stereo decoders and transformers
-// stereophonic / binaural
-~decoder = FoaDecoderMatrix.newStereo((131/2).degrad, 0.5) // Cardioids at 131 deg
-~decoder = FoaDecoderKernel.newSpherical                   // synthetic binaural (kernel)
-~decoder = FoaDecoderKernel.newCIPIC                       // KEMAR binaural (kernel)
-~transformer = 'pushX'
-~transformer = 'directO'
+// Make a synth after the defs
+x = Synth(\micInput, [\angle, 0,
+	                  \azimuth, 0,
+	                  \distance, 1,
+	                  \elevation, 0]
+);
 x.free;
-s.quit;
