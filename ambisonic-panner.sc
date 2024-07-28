@@ -17,9 +17,11 @@ s.boot;
 SerialOSCClient.init;
 )
 
+// Neat GUI for all the transform methods
+~display = FoaXformDisplay();
 ~encoder = FoaEncoderMatrix.newOmni;
 ~decoder = FoaDecoderKernel.newUHJ;                         // UHJ (kernel)
-~transformer = 'zoomX';
+// ~transformer = 'zoomX';
 ~transformer = 'push';
 ~renderDecode = { arg in, decoder;
     var kind;
@@ -28,109 +30,137 @@ SerialOSCClient.init;
 }
 
 SynthDef.new(\micInput, { |out = 0,
+	                       angle= 0,
 	                       azimuth = 0,
-	                       distance = 1,
-	                       elevation = 0|
+	                       elevation = 0,
+	                       distance = 1|
 	Out.ar(out,
 		FoaDecode.ar(
 		    FoaTransform.ar(
 			    FoaEncode.ar(
 				    SoundIn.ar(out, distance),
 				    ~encoder
-		        ), ~transformer, elevation, azimuth
+		        ), ~transformer, angle, azimuth, elevation
 			), ~decoder
 		)
 	);
 }).add;
-x = Synth(\micInput, [\azimuth, 0,
+x = Synth(\micInput, [\angle, 0,
+	                  \azimuth, 0,
 	                  \distance, 1,
-	                  \elevation, 0])
-x.set(\azimuth, pi);
+	                  \elevation, 0]
+)
 x.free;
+
 (
-var ring_values = [0,0,0,0];
+~ring_values = [0,0,0,0];
 // Define callback function for encoder events
-a = EncDeltadef(\aziPan, {|ring, delta|
+a = EncDeltadef(\anglePan, {|ring, delta|
 	var min = -512;
 	var max = 512;
 	var scaled_value;
-	// holy shit control structures in SC lang SUCK!
 	case
 	// going down
 	{delta < 0} {
-		var current_value = ring_values[ring];
+		var current_value = ~ring_values[ring];
 		if (current_value + delta < min) {
-			ring_values[ring] = min;
+			~ring_values[ring] = min;
 		} {
-			ring_values[ring] = ring_values[ring] + delta;
+			~ring_values[ring] = ~ring_values[ring] + delta;
 		};
 	}
 	// going up
 	{delta > 0} {
 
-		var current_value = ring_values[ring];
+		var current_value = ~ring_values[ring];
 		if (current_value + delta > max) {
-			ring_values[ring] = max;
+			~ring_values[ring] = max;
 		} {
-			ring_values[ring] = ring_values[ring] + delta;
+			~ring_values[ring] = ~ring_values[ring] + delta;
 		};
 	};
-	scaled_value = ring_values[ring].linlin(min, max, -pi, pi);
+	scaled_value = ~ring_values[ring].linlin(min, max, pi/2, -pi/2);
+	"encoder number (%): angle (%)".format(ring, scaled_value).postln;
+	x.set(\angle, scaled_value);
+}, 0);
+b = EncDeltadef(\aziPan, {|ring, delta|
+	var min = -512;
+	var max = 512;
+	var scaled_value;
+	case
+	// going down
+	{delta < 0} {
+		var current_value = ~ring_values[ring];
+		if (current_value + delta < min) {
+			~ring_values[ring] = min;
+		} {
+			~ring_values[ring] = ~ring_values[ring] + delta;
+		};
+	}
+	// going up
+	{delta > 0} {
+
+		var current_value = ~ring_values[ring];
+		if (current_value + delta > max) {
+			~ring_values[ring] = max;
+		} {
+			~ring_values[ring] = ~ring_values[ring] + delta;
+		};
+	};
+	scaled_value = ~ring_values[ring].linlin(min, max, pi, -pi);
 	"encoder number (%): azimuth (%)".format(ring, scaled_value).postln;
 	x.set(\azimuth, scaled_value);
-}, 0);
-b = EncDeltadef(\distancePan, {|ring, delta|
+}, 1);
+c = EncDeltadef(\elevationPan, {|ring, delta|
 	var min = -512;
 	var max = 512;
 	var scaled_value;
-	// holy shit control structures in SC lang SUCK!
 	case
 	// going down
 	{delta < 0} {
-		var current_value = ring_values[ring];
+		var current_value = ~ring_values[ring];
 		if (current_value + delta < min) {
-			ring_values[ring] = min;
+			~ring_values[ring] = min;
 		} {
-			ring_values[ring] = ring_values[ring] + delta;
+			~ring_values[ring] = ~ring_values[ring] + delta;
 		};
 	}
 	// going up
 	{delta > 0} {
-		var current_value = ring_values[ring];
+		var current_value = ~ring_values[ring];
 		if (current_value + delta > max)
-		{ring_values[ring] = max}
-		{ring_values[ring] = ring_values[ring] + delta };
+		{~ring_values[ring] = max}
+		{~ring_values[ring] = ~ring_values[ring] + delta };
 	};
-	scaled_value = ring_values[ring].lincurve(min, max, 0, 1);
-	"encoder number (%): distance (%)".format(ring, scaled_value).postln;
-	x.set(\distance, scaled_value);
-}, 2);
-b = EncDeltadef(\elevationPan, {|ring, delta|
-	var min = -512;
-	var max = 512;
-	var scaled_value;
-	// holy shit control structures in SC lang SUCK!
-	case
-	// going down
-	{delta < 0} {
-		var current_value = ring_values[ring];
-		if (current_value + delta < min) {
-			ring_values[ring] = min;
-		} {
-			ring_values[ring] = ring_values[ring] + delta;
-		};
-	}
-	// going up
-	{delta > 0} {
-		var current_value = ring_values[ring];
-		if (current_value + delta > max)
-		{ring_values[ring] = max}
-		{ring_values[ring] = ring_values[ring] + delta };
-	};
-	scaled_value = ring_values[ring].linlin(min, max, pi/2, 0);
+	scaled_value = ~ring_values[ring].linlin(min, max, pi, -pi);
 	"encoder number (%): elevation (%)".format(ring, scaled_value).postln;
 	x.set(\elevation, scaled_value);
-}, 1);
+}, 2);
+d = EncDeltadef(\distancePan, {|ring, delta|
+	var min = -512;
+	var max = 512;
+	var scaled_value;
+	case
+	// going down
+	{delta < 0} {
+		var current_value = ~ring_values[ring];
+		if (current_value + delta < min) {
+			~ring_values[ring] = min;
+		} {
+			~ring_values[ring] = ~ring_values[ring] + delta;
+		};
+	}
+	// going up
+	{delta > 0} {
+		var current_value = ~ring_values[ring];
+		if (current_value + delta > max)
+		{~ring_values[ring] = max}
+		{~ring_values[ring] = ~ring_values[ring] + delta };
+	};
+	scaled_value = ~ring_values[ring].lincurve(min, max, 0, 1);
+	"encoder number (%): distance (%)".format(ring, scaled_value).postln;
+	x.set(\distance, scaled_value);
+}, 3);
 )
 // Some other options for stereo decoders and transformers
 // stereophonic / binaural
