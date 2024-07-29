@@ -11,6 +11,7 @@ The file ambisonic-panner.sc is a prototype of the full stack of things to creat
 3. Encoder/Transformer/Decoder from the [Ambisonic Tool Kit](https://www.ambisonictoolkit.net/documentation/supercollider/) (ATK)
 4. A MIDI input device that can make note on/off events
 5. Binaural headphones (most over-the-ear will work). [I have this AKG device.](https://www.akg.com/headphones/professional-headphones/K553MkII.html)
+6. A microphone connected to the first input of the Scarlett
 
 ## Hardware Control
 
@@ -21,7 +22,7 @@ This depends on a [Monome Arc](https://monome.org/docs/arc/) for angle/azimuth/e
 3. Enc3 is elevation, which is how high the sound energy is relative to your nose(?).
 4. Enc4 is distance from you, which is simply the volume of the sound source.
 
-The MIDI keyboard can play a simple polyphonic syntheziser. Move your voice around to compare its location to the synth! Fun!
+The MIDI keyboard can play a simple polyphonic syntheziser. Speak into the microphone and move your voice around to compare its location to the synth! Fun!
 
 ## TODO
 
