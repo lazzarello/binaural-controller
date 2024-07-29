@@ -1,6 +1,6 @@
 # Binaural Controller
 
-This is a collection of SuperCollider and Python code to create a realtime Ambisonic control system for arbitrary monophonic audio inputs. Audio I/O is built for Linux with Pipewire-jack. Using a [Focusrite Scarlett 18i8 2nd Gen Pro](https://downloads.focusrite.com/focusrite/scarlett-2nd-gen/scarlett-18i8-2nd-gen) USB audio interface, I get ~10ms latency for microphone input + Ambisonic control.
+This is a collection of SuperCollider and Python code to create a realtime Ambisonic control system for arbitrary monophonic audio inputs. Audio I/O is built for Linux with Pipewire-jack. Using a [Focusrite Scarlett 18i8 2nd Gen Pro](https://downloads.focusrite.com/focusrite/scarlett-2nd-gen/scarlett-18i8-2nd-gen) USB audio interface, I get ~10ms latency for microphone input + Ambisonic control to headphone ouput.
 
 ## Getting Started
 
